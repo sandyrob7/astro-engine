@@ -1,33 +1,60 @@
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 import swisseph as swe
 
-app = FastAPI()
-swe.set_ephe_path(".")
+app = FastAPI(
+    title="astro-engine",
+    version="0.1",
+    description="Deterministic astrology calculation engine"
+)
+
+# CORS (open for demo)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
+@app.get("/", response_class=HTMLResponse)
+def root():
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 @app.get("/calculate")
-def calculate(year: int, month: int, day: int, hour: float, lat: float, lon: float):
+def calculate(
+    year: int,
+    month: int,
+    day: int,
+    hour: float,
+    lat: float,
+    lon: float
+):
+    # Julian day
     jd = swe.julday(year, month, day, hour)
 
-    planets = {
-        "Sun": swe.SUN,
-        "Moon": swe.MOON,
-        "Mars": swe.MARS,
-        "Mercury": swe.MERCURY,
-        "Jupiter": swe.JUPITER,
-        "Venus": swe.VENUS,
-        "Saturn": swe.SATURN
-    }
+    # Set location
+    swe.set_topo(lon, lat, 0)
 
-    result = {}
-    for name, pid in planets.items():
-        lon = swe.calc_ut(jd, pid)[0][0]
-        result[name] = {
-            "longitude": round(lon, 4),
-            "sign": int(lon // 30) + 1
-        }
+    # Example: Sun position
+    sun_pos, _ = swe.calc_ut(jd, swe.SUN)
 
     return {
-        "jd": jd,
-        "planets": result,
-        "engine": "Swiss Ephemeris"
+        "input": {
+            "year": year,
+            "month": month,
+            "day": day,
+            "hour": hour,
+            "lat": lat,
+            "lon": lon
+        },
+        "chart": {
+            "sun_longitude": sun_pos[0]
+        },
+        "dashas": {}
     }
