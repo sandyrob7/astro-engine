@@ -1,0 +1,3 @@
+pyswisseph
+fastapi
+uvicorn
